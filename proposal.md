@@ -20,7 +20,7 @@ User feedback: Gathering insights to refine and improve QuickFocus.
 
 ## Section 3: Proposed Solution and Technology
 
-	QuickFocus will be built using modern technologies to deliver a lightweight, interactive game widget that allows users to play mini-games directly from their home or lock screen. The system will consist of key components like a game engine for managing game logic, a user interface for seamless interaction, a score-tracking system, and a leaderboard for competitive play. We will use tools like SwiftUI and WidgetKit for iOS. While the minimal viable system will include a single mini-game and local score tracking, future enhancements could include additional games, daily challenges, and customization options. Testing will involve unit integration, user, and performance testing to ensure the widget is functional, efficient, and user-friendly. By leveraging existing tools and frameworks, we aim to deliver a high-quality product that meets customer needs while allowing room for future improvements.
+QuickFocus will be built using modern technologies to deliver a lightweight, interactive game widget that allows users to play mini-games directly from their home or lock screen. The system will consist of key components like a game engine for managing game logic, a user interface for seamless interaction, a score-tracking system, and a leaderboard for competitive play. We will use tools like SwiftUI and WidgetKit for iOS. While the minimal viable system will include a single mini-game and local score tracking, future enhancements could include additional games, daily challenges, and customization options. Testing will involve unit integration, user, and performance testing to ensure the widget is functional, efficient, and user-friendly. By leveraging existing tools and frameworks, we aim to deliver a high-quality product that meets customer needs while allowing room for future improvements.
 
 ## Section 4: Team
 
@@ -28,7 +28,7 @@ One member (Jake Brown) has prior experience building a similar project and work
 
 ## Section 5: Project Management
 
-	We’re confident we can finish the widget for our iOS app, given our team’s ability to learn quickly and all the online resources out there. We’ll be meeting in person every Monday at 3 pm at Hodges Library, giving ourselves about an hour and a half for our weekly catch-up.
+We’re confident we can finish the widget for our iOS app, given our team’s ability to learn quickly and all the online resources out there. We’ll be meeting in person every Monday at 3 pm at Hodges Library, giving ourselves about an hour and a half for our weekly catch-up.
 
 8-Week Project Schedule: Pomodoro Productivity App & Widget
 
