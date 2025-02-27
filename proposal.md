@@ -82,7 +82,7 @@ Deadline: End of Week 8
 Submit the app to the App Store for review  
 Prepare a simple marketing plan (social media, launch announcement)  
 Address any feedback from Apple review  
-Release version 1.0!  
+Release version 1.0
 
 Our app must follow Apple’s guidelines and comply with GDPR (General Data Protection Regulation), CCPA (California Consumer Privacy Act), and ATT (App Tracking Transparency) if we collect user data, ensuring privacy and transparency. Ethically, we should promote healthy study habits, avoid exploitative gamification, and make the app accessible to all users, including those with disabilities. We’ll also respect user autonomy by avoiding dark patterns, ensuring easy data deletion, and maintaining a trustworthy experience.
 
