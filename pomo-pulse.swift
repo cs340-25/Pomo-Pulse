@@ -1,5 +1,12 @@
 import SwiftUI
 
+// Timer mode enum
+enum TimerMode: String {
+    case work = "Work"
+    case shortBreak = "Short Break"
+    case longBreak = "Long Break"
+}
+
 struct ContentView: View {
     @State private var timeRemaining = 25 * 60 // 25 minutes in seconds
         @State private var timerActive = false
