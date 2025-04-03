@@ -54,6 +54,12 @@ struct ContentView: View {
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let soundPlayer = try? AVAudioPlayer(data: NSDataAsset(name: "bell")?.data ?? Data())
     
+    // Settings
+    @State private var workDuration = 25
+    @State private var shortBreakDuration = 5
+    @State private var longBreakDuration = 15
+    @State private var pomodorosUntilLongBreak = 4
+    
     var body: some View {
         VStack {
             Text("Pomo-Pulse")
