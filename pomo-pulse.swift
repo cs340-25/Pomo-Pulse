@@ -1,5 +1,9 @@
 import SwiftUI
 
+// Sound
+let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+let soundPlayer = try? AVAudioPlayer(data: NSDataAsset(name: "bell")?.data ?? Data())
+
 // Timer mode enum
 enum TimerMode: String {
     case work = "Work"
