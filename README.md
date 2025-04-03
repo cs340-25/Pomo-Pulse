@@ -51,6 +51,7 @@ Pomo-Pulse is a SwiftUI-based Pomodoro timer application designed to help users 
 1. Clone the repository
 2. Open the project in Xcode
 3. Build and run on your device or simulator
+4. Add app icon photo under Pomo-pulse->Assets->App icon (Optional)
 
 ## Future Enhancements
 
