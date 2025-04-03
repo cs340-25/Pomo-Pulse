@@ -9,7 +9,38 @@ enum TimerMode: String {
     case longBreak = "Long Break"
 }
 
-
+// Settings view
+struct SettingsView: View {
+    @Binding var workDuration: Int 
+    @Binding var shortBreakDuration: Int
+    @Binding var longBreakDuration: Int
+    @Binding var pomodorosUntilLongBreak: Int
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Timer Durations")) {
+                    Stepper("Work: \(workDuration) minutes", value: $workDuration, in: 1...60)
+                    Stepper("Short Break: \(shortBreakDuration) minutes", value: $shortBreakDuration, in: 1...30)
+                    Stepper("Long Break: \(longBreakDuration) minutes", value: $longBreakDuration, in: 5...60)
+                }
+                
+                Section(header: Text("Pomodoro Sequence")) {
+                    Stepper("Pomodoros until long break: \(pomodorosUntilLongBreak)", value: $pomodorosUntilLongBreak, in: 1...10)
+                }
+            }
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
 
 struct ContentView: View {
     // Timer states
