@@ -31,6 +31,18 @@ struct ContentView: View {
         return Double(totalTime - timeRemaining) / Double(totalTime)
     }
     
+    // MARK: - Filled Circles
+    var displayFilledCount: Int {
+        guard completedPomodoros > 0 else { return 0 }
+            
+        let mod = completedPomodoros % pomodorosUntilLongBreak
+        if mod != 0 {
+            return mod
+        }
+        
+        return timerMode == .work ? 0 : pomodorosUntilLongBreak
+    }
+    
     // MARK: - View Body
     var body: some View {
         NavigationView {
@@ -39,7 +51,7 @@ struct ContentView: View {
                 // Display circles showing progress within the current pomodoro set
                 HStack {
                     ForEach(0..<pomodorosUntilLongBreak, id: \.self) { index in
-                        Image(systemName: index < completedPomodoros % pomodorosUntilLongBreak ? "circle.fill" : "circle")
+                        Image(systemName: index < displayFilledCount ? "circle.fill" : "circle")
                             .foregroundColor(.red)
                     }
                 }
