@@ -285,6 +285,46 @@ class SessionHistoryManager: ObservableObject {
         }
         self.sessions = sessions
     }
+    
+    // Add a new session both locally and to cloud if user is logged in
+    func addSession(_ session: PomodoroSession, to sessions: inout [PomodoroSession], userId: String? = nil) {
+        var sessionToAdd = session
+        sessionToAdd.userId = userId
+        
+        sessions.append(sessionToAdd)
+        saveSessions(sessions)
+        
+        // If user is logged in, also save to cloud
+        if let userId = userId {
+            do {
+                try db.collection("users").document(userId)
+                    .collection("sessions")
+                    .document(session.id.uuidString)
+                    .setData(from: sessionToAdd)
+            } catch {
+                print("Error saving session to cloud: \(error)")
+            }
+        }
+    }
+    
+    // Delete session both locally and from cloud
+    func deleteSession(at indexSet: IndexSet, from sessions: inout [PomodoroSession], userId: String? = nil) {
+        let sessionsToDelete = indexSet.map { sessions[$0] }
+        
+        // Remove from local storage
+        sessions.remove(atOffsets: indexSet)
+        saveSessions(sessions)
+        
+        // Remove from cloud if user is logged in
+        if let userId = userId {
+            for session in sessionsToDelete {
+                db.collection("users").document(userId)
+                    .collection("sessions")
+                    .document(session.id.uuidString)
+                    .delete()
+            }
+        }
+    }
 }
 
 struct ContentView: View {
