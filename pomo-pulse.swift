@@ -1,5 +1,50 @@
 import SwiftUI
 import AVFoundation
+import AuthenticationServices
+import FirebaseCore
+import FirebaseAuth
+import FirebaseFirestore
+
+// Firebase configuration setup
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        FirebaseApp.configure()
+        return true
+    }
+}
+
+// Model for storing completed session data
+struct PomodoroSession: Identifiable, Codable {
+    var id = UUID()
+    var date: Date
+    var duration: Int // in minutes
+    var type: String // "Work", "Short Break", or "Long Break"
+    var userId: String? // For linking sessions to user accounts
+    
+    // Computed property for formatted date
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// User Profile Model
+struct UserProfile: Codable {
+    var userId: String
+    var email: String
+    var displayName: String?
+    var emailNotificationsEnabled: Bool = true
+    var emailFrequency: EmailFrequency = .weekly
+    var lastEmailSent: Date?
+    
+    enum EmailFrequency: String, Codable, CaseIterable {
+        case daily = "Daily"
+        case weekly = "Weekly"
+        case monthly = "Monthly"
+    }
+}
 
 struct ContentView: View {
     // MARK: - State Properties
