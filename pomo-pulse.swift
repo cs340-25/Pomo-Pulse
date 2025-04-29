@@ -30,6 +30,22 @@ struct PomodoroSession: Identifiable, Codable {
     }
 }
 
+// User Profile Model
+struct UserProfile: Codable {
+    var userId: String
+    var email: String
+    var displayName: String?
+    var emailNotificationsEnabled: Bool = true
+    var emailFrequency: EmailFrequency = .weekly
+    var lastEmailSent: Date?
+    
+    enum EmailFrequency: String, Codable, CaseIterable {
+        case daily = "Daily"
+        case weekly = "Weekly"
+        case monthly = "Monthly"
+    }
+}
+
 // Authentication Manager
 class AuthManager: ObservableObject {
     @Published var isAuthenticated = false
@@ -186,22 +202,6 @@ class AuthManager: ObservableObject {
     }
 }
 
-// User Profile Model
-struct UserProfile: Codable {
-    var userId: String
-    var email: String
-    var displayName: String?
-    var emailNotificationsEnabled: Bool = true
-    var emailFrequency: EmailFrequency = .weekly
-    var lastEmailSent: Date?
-    
-    enum EmailFrequency: String, Codable, CaseIterable {
-        case daily = "Daily"
-        case weekly = "Weekly"
-        case monthly = "Monthly"
-    }
-}
-
 // Session History Manager with Cloud Sync
 class SessionHistoryManager: ObservableObject {
     private let localHistoryKey = "pomodoroSessionHistory"
@@ -225,7 +225,7 @@ class SessionHistoryManager: ObservableObject {
         
         return localSessions
     }
-
+    
     // Sync local sessions with cloud
     func syncSessionsWithCloud(localSessions: [PomodoroSession], userId: String) {
         // Get cloud sessions
@@ -277,7 +277,7 @@ class SessionHistoryManager: ObservableObject {
             }
         }
     }
-
+    
     // Save sessions locally
     func saveSessions(_ sessions: [PomodoroSession]) {
         if let encoded = try? JSONEncoder().encode(sessions) {
@@ -285,7 +285,7 @@ class SessionHistoryManager: ObservableObject {
         }
         self.sessions = sessions
     }
-
+    
     // Add a new session both locally and to cloud if user is logged in
     func addSession(_ session: PomodoroSession, to sessions: inout [PomodoroSession], userId: String? = nil) {
         var sessionToAdd = session
@@ -325,7 +325,7 @@ class SessionHistoryManager: ObservableObject {
             }
         }
     }
-
+    
     // Generate email content for user's session summary
     func generateEmailContent(for sessions: [PomodoroSession], period: String) -> String {
         let workSessions = sessions.filter { $0.type == "Work" }
@@ -428,36 +428,72 @@ class SessionHistoryManager: ObservableObject {
 }
 
 struct ContentView: View {
-    // MARK: - State Properties
-    // Timer state variables to track current timer status
+    // Authentication
+    @StateObject private var authManager = AuthManager()
+    @State private var showingLoginView = false
+    @State private var showingSignupView = false
+    
+    // Timer states
     @State private var timeRemaining = 25 * 60 // 25 minutes in seconds
-    @State private var timerActive = false     // Controls if timer is running
-    @State private var timerMode: TimerMode = .work  // Current timer mode (work/break)
-    @State private var completedPomodoros = 0  // Tracks completed work sessions
-    @State private var showingSettings = false // Controls settings sheet visibility
+    @State private var timerActive = false
+    @State private var timerMode: TimerMode = .work
+    @State private var completedPomodoros = 0
+    @State private var showingSettings = false
+    @State private var showingHistory = false
+    @State private var showingProfile = false
     
-    // MARK: - User Settings
-    // Persistent settings stored using AppStorage
-    @AppStorage("workDuration") private var workDuration = 25               // Work duration in minutes
-    @AppStorage("shortBreakDuration") private var shortBreakDuration = 5    // Short break duration in minutes
-    @AppStorage("longBreakDuration") private var longBreakDuration = 15     // Long break duration in minutes
-    @AppStorage("pomodorosUntilLongBreak") private var pomodorosUntilLongBreak = 4  // Work sessions before long break
+    // Session history
+    @StateObject private var historyManager = SessionHistoryManager()
+    @State private var sessionHistory: [PomodoroSession] = []
     
-    // MARK: - Timer and Sound
-    // Timer publisher to trigger updates every second
+    // For tracking session start time
+    @State private var sessionStartTime = Date()
+    
+    // Settings
+    @AppStorage("workDuration") private var workDuration = 25
+    @AppStorage("shortBreakDuration") private var shortBreakDuration = 5
+    @AppStorage("longBreakDuration") private var longBreakDuration = 15
+    @AppStorage("pomodorosUntilLongBreak") private var pomodorosUntilLongBreak = 4
+    
+    // Sound
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    // Sound player for timer completion notification
     let soundPlayer = try? AVAudioPlayer(data: NSDataAsset(name: "bell")?.data ?? Data())
     
-    // MARK: - Computed Properties
-    // Calculate progress percentage for circular timer display
+    // Computed properties
     var progress: Double {
         let totalTime = timerMode == .work ? workDuration * 60 :
                        (timerMode == .shortBreak ? shortBreakDuration * 60 : longBreakDuration * 60)
         return Double(totalTime - timeRemaining) / Double(totalTime)
     }
     
-    // MARK: - Filled Circles
+    // Background properties based on timer mode
+    var backgroundGradient: LinearGradient {
+        switch timerMode {
+        case .work:
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(#colorLiteral(red: 0.9254902005, green: 0.2352941185, blue: 0.1019607857, alpha: 1)), Color(#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1))]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .shortBreak:
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(#colorLiteral(red: 0.4745098054, green: 0.8392156959, blue: 0.9764705896, alpha: 1)), Color(#colorLiteral(red: 0.5568627715, green: 0.3529411852, blue: 0.9686274529, alpha: 1))]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case .longBreak:
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(#colorLiteral(red: 0.3411764801, green: 0.6235294342, blue: 0.1686274558, alpha: 1)), Color(#colorLiteral(red: 0.1764705926, green: 0.4980392158, blue: 0.7568627596, alpha: 1))]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    var textColor: Color {
+        timerMode == .work ? .white : .white
+    }
+    // Fill in circles based on how many work states finished
     var displayFilledCount: Int {
         guard completedPomodoros > 0 else { return 0 }
             
@@ -469,98 +505,151 @@ struct ContentView: View {
         return timerMode == .work ? 0 : pomodorosUntilLongBreak
     }
     
-    // MARK: - View Body
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // MARK: - Pomodoro Progress Indicators
-                // Display circles showing progress within the current pomodoro set
-                HStack {
-                    ForEach(0..<pomodorosUntilLongBreak, id: \.self) { index in
-                        Image(systemName: index < displayFilledCount ? "circle.fill" : "circle")
-                            .foregroundColor(.red)
+            ZStack {
+                // Dynamic background
+                backgroundGradient
+                    .ignoresSafeArea()
+                    .animation(.easeInOut(duration: 1.0), value: timerMode)
+                
+                // Content
+                VStack(spacing: 20) {
+                    // Top row: Profile | Title | Settings
+                    HStack {
+                        Button(action: {
+                            if authManager.isAuthenticated {
+                                showingProfile = true
+                            } else {
+                                showingLoginView = true
+                            }
+                        }) {
+                            Image(systemName: authManager.isAuthenticated ? "person.crop.circle.fill" : "person.crop.circle")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .shadow(radius: 2)
+                        }
+
+                        Spacer()
+
+                        Text("Pomo-Pulse")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(radius: 2)
+
+                        Spacer()
+
+                        Button(action: {
+                            showingSettings.toggle()
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .shadow(radius: 2)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Header with completed pomodoros
+                    HStack(spacing: 8) {
+                        ForEach(0..<pomodorosUntilLongBreak, id: \.self) { index in
+                            Image(systemName: index < displayFilledCount ? "circle.fill" : "circle")
+                                .foregroundColor(.white)
+                                .shadow(radius: 2)
+                        }
+                    }
+                    .padding(.top, 10)
+
+                    
+                    // Timer mode indicator
+                    Text(timerMode.rawValue)
+                        .font(.title)
+                        .foregroundColor(.white)
+                        .fontWeight(.bold)
+                        .shadow(radius: 2)
+                    
+                    // Timer display
+                    ZStack {
+                        Circle()
+                            .stroke(lineWidth: 20)
+                            .opacity(0.3)
+                            .foregroundColor(.white)
+                        
+                        Circle()
+                            .trim(from: 0.0, to: CGFloat(min(progress, 1.0)))
+                            .stroke(style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+                            .foregroundColor(.white)
+                            .rotationEffect(Angle(degrees: 270))
+                            .animation(.linear, value: progress)
+                        
+                        VStack {
+                            Text("\(timeRemaining / 60):\(String(format: "%02d", timeRemaining % 60))")
+                                .font(.system(size: 60, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .shadow(radius: 2)
+                            
+                            Text("\(timerMode == .work ? "Focus" : "Break")")
+                                .font(.title3)
+                                .foregroundColor(.white.opacity(0.8))
+                                .shadow(radius: 1)
+                        }
+                    }
+                    .padding(40)
+                    
+                    // Control buttons
+                    HStack(spacing: 30) {
+                        Button(action: {
+                            if !timerActive {
+                                // Start timer and record start time
+                                sessionStartTime = Date()
+                            }
+                            timerActive.toggle()
+                        }) {
+                            Image(systemName: timerActive ? "pause.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white)
+                                .shadow(radius: 3)
+                        }
+                        
+                        Button(action: resetTimer) {
+                            Image(systemName: "arrow.clockwise.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white)
+                                .shadow(radius: 3)
+                        }
+                    }
+                    
+                    // Skip and History buttons
+                    HStack(spacing: 20) {
+                        Button(action: skipToNextPhase) {
+                            Text("Skip")
+                                .foregroundColor(.white)
+                                .shadow(radius: 1)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.2))
+                                )
+                        }
+                        
+                        Button(action: { showingHistory.toggle() }) {
+                            Text("History")
+                                .foregroundColor(.white)
+                                .shadow(radius: 1)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.2))
+                                )
+                        }
                     }
                 }
                 .padding()
-                
-                // MARK: - Timer Mode Label
-                // Display current mode (Work, Short Break, Long Break)
-                Text(timerMode.rawValue)
-                    .font(.title)
-                    .foregroundColor(timerMode == .work ? .red : .green)
-                    .fontWeight(.bold)
-                
-                // MARK: - Timer Circle Display
-                // Visual circular timer with progress indicator
-                ZStack {
-                    // Background circle
-                    Circle()
-                        .stroke(lineWidth: 20)
-                        .opacity(0.3)
-                        .foregroundColor(timerMode == .work ? .red : .green)
-                    
-                    // Progress circle that grows as time passes
-                    Circle()
-                        .trim(from: 0.0, to: CGFloat(min(progress, 1.0)))
-                        .stroke(style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
-                        .foregroundColor(timerMode == .work ? .red : .green)
-                        .rotationEffect(Angle(degrees: 270))
-                        .animation(.linear, value: progress)
-                    
-                    // Time remaining and mode label
-                    VStack {
-                        // Timer display in MM:SS format
-                        Text("\(timeRemaining / 60):\(String(format: "%02d", timeRemaining % 60))")
-                            .font(.system(size: 60, weight: .bold, design: .monospaced))
-                        
-                        // Current focus state label
-                        Text("\(timerMode == .work ? "Focus" : "Break")")
-                            .font(.title3)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(40)
-                
-                // MARK: - Control Buttons
-                // Play/Pause and Reset buttons
-                HStack(spacing: 30) {
-                    // Play/Pause toggle button
-                    Button(action: {
-                        timerActive.toggle()
-                    }) {
-                        Image(systemName: timerActive ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(timerActive ? .orange : .green)
-                    }
-                    
-                    // Reset button to restart current timer
-                    Button(action: resetTimer) {
-                        Image(systemName: "arrow.clockwise.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.red)
-                    }
-                }
-                
-                // MARK: - Skip Button
-                // Button to bypass current phase and move to next one
-                Button(action: skipToNextPhase) {
-                    Text("Skip to next phase")
-                        .foregroundColor(.blue)
-                        .padding()
-                }
             }
-            .padding()
-            .navigationTitle("Pomo-Pulse")
-            // MARK: - Settings Button
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { showingSettings.toggle() }) {
-                        Image(systemName: "gear")
-                    }
-                }
-            }
-            // MARK: - Settings Sheet
-            // Modal sheet for timer configuration
+            .preferredColorScheme(timerMode == .work ? .dark : .light)
             .sheet(isPresented: $showingSettings) {
                 SettingsView(
                     workDuration: $workDuration,
@@ -569,62 +658,134 @@ struct ContentView: View {
                     pomodorosUntilLongBreak: $pomodorosUntilLongBreak
                 )
             }
+            .sheet(isPresented: $showingHistory) {
+                HistoryView(
+                    sessions: $sessionHistory,
+                    historyManager: historyManager,
+                    userId: authManager.currentUser?.userId
+                )
+            }
+            .sheet(isPresented: $showingProfile) {
+                ProfileView(authManager: authManager)
+            }
+            .sheet(isPresented: $showingLoginView) {
+                AuthView(authManager: authManager, isSignUp: false)
+            }
+            .sheet(isPresented: $showingSignupView) {
+                AuthView(authManager: authManager, isSignUp: true)
+            }
+            .onReceive(timer) { _ in
+                if timerActive && timeRemaining > 0 {
+                    timeRemaining -= 1
+                } else if timerActive && timeRemaining == 0 {
+                    playSound()
+                    recordCompletedSession()
+                    moveToNextPhase()
+                }
+            }
+            .onAppear {
+                // Load session history when app launches
+                sessionHistory = historyManager.loadSessions(for: authManager.currentUser?.userId)
+            }
+            .onChange(of: authManager.isAuthenticated) {
+                if authManager.isAuthenticated {
+                    sessionHistory = historyManager.loadSessions(for: authManager.currentUser?.userId)
+                }
+            }
+
         }
-        // MARK: - Timer Event Handler
-        // Update timer every second when active
-        .onReceive(timer) { _ in
-            if timerActive && timeRemaining > 0 {
-                // Decrement timer if active and not finished
-                timeRemaining -= 1
-            } else if timerActive && timeRemaining == 0 {
-                // Timer finished - play sound and move to next phase
-                playSound()
-                moveToNextPhase()
+    }
+    
+    // Record completed session
+    func recordCompletedSession() {
+        let sessionDuration: Int
+        switch timerMode {
+        case .work:
+            sessionDuration = workDuration
+        case .shortBreak:
+            sessionDuration = shortBreakDuration
+        case .longBreak:
+            sessionDuration = longBreakDuration
+        }
+        
+        let session = PomodoroSession(
+            date: sessionStartTime,
+            duration: sessionDuration,
+            type: timerMode.rawValue
+        )
+        
+        historyManager.addSession(
+            session,
+            to: &sessionHistory,
+            userId: authManager.currentUser?.userId
+        )
+        
+        // Check if we should send an email update
+        if let user = authManager.currentUser, user.emailNotificationsEnabled {
+            var shouldSendEmail = false
+            
+            if let lastSent = user.lastEmailSent {
+                let calendar = Calendar.current
+                let now = Date()
+                
+                switch user.emailFrequency {
+                case .daily:
+                    shouldSendEmail = !calendar.isDate(lastSent, inSameDayAs: now)
+                case .weekly:
+                    let weekOfYear = calendar.component(.weekOfYear, from: now)
+                    let lastWeekOfYear = calendar.component(.weekOfYear, from: lastSent)
+                    shouldSendEmail = weekOfYear != lastWeekOfYear
+                case .monthly:
+                    let month = calendar.component(.month, from: now)
+                    let lastMonth = calendar.component(.month, from: lastSent)
+                    shouldSendEmail = month != lastMonth
+                }
+            } else {
+                // No emails sent yet
+                shouldSendEmail = true
+            }
+            
+            if shouldSendEmail {
+                historyManager.sendEmailUpdate(for: user, sessions: sessionHistory)
             }
         }
     }
     
-    // MARK: - Timer Control Methods
-    
-    /// Resets the current timer to its starting value
+    // Timer control functions
     func resetTimer() {
         timerActive = false
         updateTimeRemainingForCurrentMode()
     }
     
-    /// Plays the notification sound when timer completes
     func playSound() {
         soundPlayer?.play()
     }
     
-    /// Handles transition between work and break phases
     func moveToNextPhase() {
         timerActive = false
         
         if timerMode == .work {
-            // If coming from work mode, increment completed count
             completedPomodoros += 1
-            // Determine if we need a long break or short break
             if completedPomodoros % pomodorosUntilLongBreak == 0 {
                 timerMode = .longBreak
             } else {
                 timerMode = .shortBreak
             }
         } else {
-            // If coming from break mode, go back to work
             timerMode = .work
         }
         
-        // Update timer for the new mode
         updateTimeRemainingForCurrentMode()
     }
     
-    /// Manually skips to next phase
     func skipToNextPhase() {
+        // Only record if timer was active
+        if timerActive {
+            recordCompletedSession()
+        }
         moveToNextPhase()
     }
     
-    /// Sets the timer value based on current mode
     func updateTimeRemainingForCurrentMode() {
         switch timerMode {
         case .work:
@@ -637,35 +798,30 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Timer Mode Enum
-/// Defines the possible states of the Pomodoro timer
+// Timer mode enum
 enum TimerMode: String {
     case work = "Work"
     case shortBreak = "Short Break"
     case longBreak = "Long Break"
 }
 
-// MARK: - Settings View
-/// View for customizing timer durations and sequence
+// Settings view
 struct SettingsView: View {
-    // Bindings to parent view's settings variables
     @Binding var workDuration: Int
     @Binding var shortBreakDuration: Int
     @Binding var longBreakDuration: Int
     @Binding var pomodorosUntilLongBreak: Int
-    @Environment(\.dismiss) var dismiss  // Used to dismiss the view
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
             Form {
-                // Timer duration settings
                 Section(header: Text("Timer Durations")) {
                     Stepper("Work: \(workDuration) minutes", value: $workDuration, in: 1...60)
                     Stepper("Short Break: \(shortBreakDuration) minutes", value: $shortBreakDuration, in: 1...30)
                     Stepper("Long Break: \(longBreakDuration) minutes", value: $longBreakDuration, in: 5...60)
                 }
                 
-                // Pomodoro sequence settings
                 Section(header: Text("Pomodoro Sequence")) {
                     Stepper("Pomodoros until long break: \(pomodorosUntilLongBreak)", value: $pomodorosUntilLongBreak, in: 1...10)
                 }
@@ -682,12 +838,332 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - App Entry Point
-@main
-struct PomoPulseApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
+// History view - Completing the implementation
+struct HistoryView: View {
+    @Binding var sessions: [PomodoroSession]
+    @ObservedObject var historyManager: SessionHistoryManager
+    var userId: String?
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedFilter: SessionFilter = .all
+    
+    enum SessionFilter: String, CaseIterable {
+        case all = "All"
+        case work = "Work"
+        case breaks = "Breaks"
+    }
+    
+    var filteredSessions: [PomodoroSession] {
+        switch selectedFilter {
+        case .all:
+            return sessions
+        case .work:
+            return sessions.filter { $0.type == "Work" }
+        case .breaks:
+            return sessions.filter { $0.type == "Short Break" || $0.type == "Long Break" }
         }
     }
-}
+    
+    var body: some View {
+            NavigationView {
+                VStack {
+                    // Filter selector
+                    Picker("Filter", selection: $selectedFilter) {
+                        ForEach(SessionFilter.allCases, id: \.self) { filter in
+                            Text(filter.rawValue).tag(filter)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding()
+                    
+                    // Sessions list
+                    List {
+                        ForEach(filteredSessions.sorted(by: { $0.date > $1.date })) { session in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(session.type)
+                                        .font(.headline)
+                                        .foregroundColor(session.type == "Work" ? .red : .green)
+                                    Spacer()
+                                    Text("\(session.duration) min")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text(session.formattedDate)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .onDelete { indexSet in
+                            let indicesToDelete = indexSet.map { filteredSessions.sorted(by: { $0.date > $1.date })[$0].id }
+                            let allSessionsIndices = IndexSet(indicesToDelete.compactMap { id in
+                                sessions.firstIndex(where: { $0.id == id })
+                            })
+                            historyManager.deleteSession(at: allSessionsIndices, from: &sessions, userId: userId)
+                        }
+                    }
+                    
+                    // Stats summary
+                    VStack(spacing: 10) {
+                        let workSessions = sessions.filter { $0.type == "Work" }
+                        let totalWorkMinutes = workSessions.reduce(0) { $0 + $1.duration }
+                        let totalSessions = workSessions.count
+                        
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Total Focus Time")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(totalWorkMinutes) min")
+                                    .font(.headline)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing) {
+                                Text("Focus Sessions")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(totalSessions)")
+                                    .font(.headline)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(10)
+                    .shadow(radius: 1)
+                    .padding(.horizontal)
+                }
+                .navigationTitle("Session History")
+                .toolbar {
+                    ToolbarItem(placement: .automatic) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Authentication Views
+    struct AuthView: View {
+        @ObservedObject var authManager: AuthManager
+        var isSignUp: Bool
+        @Environment(\.dismiss) var dismiss
+        
+        @State private var email = ""
+        @State private var password = ""
+        @State private var name = ""
+        @State private var showingAlert = false
+        
+        var body: some View {
+            NavigationView {
+                Form {
+                    Section(header: Text("Account Details")) {
+                        TextField("Email", text: $email)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                        
+                        SecureField("Password", text: $password)
+                        
+                        if isSignUp {
+                            TextField("Display Name", text: $name)
+                        }
+                    }
+                    
+                    Section {
+                        Button(isSignUp ? "Create Account" : "Sign In") {
+                            if isSignUp {
+                                authManager.signUpWithEmail(email: email, password: password, name: name) { success in
+                                    if success {
+                                        dismiss()
+                                    } else {
+                                        showingAlert = true
+                                    }
+                                }
+                            } else {
+                                authManager.signInWithEmail(email: email, password: password) { success in
+                                    if success {
+                                        dismiss()
+                                    } else {
+                                        showingAlert = true
+                                    }
+                                }
+                            }
+                        }
+                        .disabled(email.isEmpty || password.isEmpty || (isSignUp && name.isEmpty))
+                    }
+                    
+                    if authManager.isLoading {
+                        Section {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                .navigationTitle(isSignUp ? "Create Account" : "Sign In")
+                .alert(isPresented: $showingAlert) {
+                    Alert(
+                        title: Text("Error"),
+                        message: Text(authManager.errorMessage ?? "An unknown error occurred"),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
+                .disabled(authManager.isLoading)
+                .toolbar {
+                    ToolbarItem(placement: .automatic) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Profile view for managing user settings
+    struct ProfileView: View {
+        @ObservedObject var authManager: AuthManager
+        @Environment(\.dismiss) var dismiss
+        @State private var emailNotificationsEnabled = true
+        @State private var emailFrequency = UserProfile.EmailFrequency.weekly
+        @State private var showingLogoutAlert = false
+        @State private var showingSuccessAlert = false
+        
+        var body: some View {
+            NavigationView {
+                Form {
+                    if let user = authManager.currentUser {
+                        Section(header: Text("Account")) {
+                            HStack {
+                                Text("Email")
+                                Spacer()
+                                Text(user.email)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if let displayName = user.displayName {
+                                HStack {
+                                    Text("Name")
+                                    Spacer()
+                                    Text(displayName)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        
+                        Section(header: Text("Email Notifications")) {
+                            Toggle("Enable Email Reports", isOn: $emailNotificationsEnabled)
+                            
+                            if emailNotificationsEnabled {
+                                Picker("Frequency", selection: $emailFrequency) {
+                                    ForEach(UserProfile.EmailFrequency.allCases, id: \.self) { frequency in
+                                        Text(frequency.rawValue).tag(frequency)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Section {
+                            Button("Save Preferences") {
+                                authManager.updateEmailPreferences(
+                                    enabled: emailNotificationsEnabled,
+                                    frequency: emailFrequency
+                                ) { success in
+                                    if success {
+                                        showingSuccessAlert = true
+                                    }
+                                }
+                            }
+                            .disabled(authManager.isLoading)
+                        }
+                        
+                        Section {
+                            Button("Sign Out") {
+                                showingLogoutAlert = true
+                            }
+                            .foregroundColor(.red)
+                        }
+                    }
+                }
+                .navigationTitle("Your Profile")
+                .toolbar {
+                    ToolbarItem(placement: .automatic) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                    }
+                }
+                .alert(isPresented: $showingLogoutAlert) {
+                    Alert(
+                        title: Text("Sign Out"),
+                        message: Text("Are you sure you want to sign out?"),
+                        primaryButton: .destructive(Text("Sign Out")) {
+                            authManager.signOut()
+                            dismiss()
+                        },
+                        secondaryButton: .cancel()
+                    )
+                }
+                .overlay(
+                    Group {
+                        if authManager.isLoading {
+                            Color.black.opacity(0.4)
+                                .ignoresSafeArea()
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        }
+                    }
+                )
+                .onAppear {
+                    if let user = authManager.currentUser {
+                        emailNotificationsEnabled = user.emailNotificationsEnabled
+                        emailFrequency = user.emailFrequency
+                    }
+                }
+                .onChange(of: showingSuccessAlert) {
+                    if showingSuccessAlert {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            showingSuccessAlert = false
+                        }
+                    }
+                }
+
+                .overlay(
+                    Group {
+                        if showingSuccessAlert {
+                            VStack {
+                                Text("Preferences saved successfully!")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Color.green)
+                                    .cornerRadius(10)
+                                    .shadow(radius: 3)
+                            }
+                            .padding()
+                            .transition(.move(edge: .top))
+                            .animation(.easeInOut, value: showingSuccessAlert)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+
+    // SwiftUI app entry point
+    @main
+    struct PomoPulseApp: App {
+        @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+        
+        var body: some Scene {
+            WindowGroup {
+                ContentView()
+            }
+        }
+    }
