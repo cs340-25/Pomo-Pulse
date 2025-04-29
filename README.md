@@ -2,8 +2,8 @@
 
 Pomo-Pulse is a SwiftUI-based Pomodoro timer application designed to help users improve productivity through structured work and break intervals.
 
-<img width="385" alt="Screenshot 2025-04-02 at 1 14 44 PM" src="https://github.com/user-attachments/assets/2a0bbe69-85ac-47cf-90b9-91b5ae5267f7" />
-<img width="384" alt="Screenshot 2025-04-02 at 1 15 06 PM" src="https://github.com/user-attachments/assets/94d794dd-295e-4502-854a-57c07e7d91e8" />
+<img width="371" alt="Screenshot 2025-04-29 at 8 15 46 AM" src="https://github.com/user-attachments/assets/9e58f0cb-7d73-4ddd-8947-d96a7feed267" />
+<img width="374" alt="Screenshot 2025-04-29 at 8 16 06 AM" src="https://github.com/user-attachments/assets/64571150-eae3-4d26-bb08-fdda2d1e17d3" />
 
 
 ## Features
