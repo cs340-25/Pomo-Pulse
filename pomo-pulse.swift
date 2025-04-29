@@ -30,6 +30,162 @@ struct PomodoroSession: Identifiable, Codable {
     }
 }
 
+// Authentication Manager
+class AuthManager: ObservableObject {
+    @Published var isAuthenticated = false
+    @Published var currentUser: UserProfile?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    
+    private var db = Firestore.firestore()
+    
+    init() {
+        checkAuthStatus()
+    }
+    
+    func checkAuthStatus() {
+        if let user = Auth.auth().currentUser {
+            self.isAuthenticated = true
+            self.loadUserProfile(userId: user.uid)
+        } else {
+            self.isAuthenticated = false
+            self.currentUser = nil
+        }
+    }
+    
+    func loadUserProfile(userId: String) {
+        self.isLoading = true
+        
+        db.collection("users").document(userId).getDocument { [weak self] document, error in
+            self?.isLoading = false
+            
+            if let error = error {
+                self?.errorMessage = "Failed to load profile: \(error.localizedDescription)"
+                return
+            }
+            
+            if let document = document, document.exists,
+               let data = try? document.data(as: UserProfile.self) {
+                self?.currentUser = data
+            } else {
+                // Create new profile if it doesn't exist
+                if let user = Auth.auth().currentUser {
+                    let newProfile = UserProfile(
+                        userId: user.uid,
+                        email: user.email ?? "",
+                        displayName: user.displayName
+                    )
+                    
+                    try? self?.db.collection("users").document(user.uid).setData(from: newProfile)
+                    self?.currentUser = newProfile
+                }
+            }
+        }
+    }
+    
+    func signInWithEmail(email: String, password: String, completion: @escaping (Bool) -> Void) {
+        self.isLoading = true
+        
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] authResult, error in
+            self?.isLoading = false
+            
+            if let error = error {
+                self?.errorMessage = error.localizedDescription
+                completion(false)
+                return
+            }
+            
+            if let user = authResult?.user {
+                self?.isAuthenticated = true
+                self?.loadUserProfile(userId: user.uid)
+                completion(true)
+            } else {
+                self?.errorMessage = "Unknown error occurred"
+                completion(false)
+            }
+        }
+    }
+    
+    func signUpWithEmail(email: String, password: String, name: String, completion: @escaping (Bool) -> Void) {
+        self.isLoading = true
+        
+        Auth.auth().createUser(withEmail: email, password: password) { [weak self] authResult, error in
+            if let error = error {
+                self?.isLoading = false
+                self?.errorMessage = error.localizedDescription
+                completion(false)
+                return
+            }
+            
+            if let user = authResult?.user {
+                // Update display name
+                let changeRequest = user.createProfileChangeRequest()
+                changeRequest.displayName = name
+                changeRequest.commitChanges { _ in }
+                
+                // Create user profile
+                let newProfile = UserProfile(
+                    userId: user.uid,
+                    email: email,
+                    displayName: name
+                )
+                
+                try? self?.db.collection("users").document(user.uid).setData(from: newProfile)
+                
+                self?.isAuthenticated = true
+                self?.currentUser = newProfile
+                self?.isLoading = false
+                completion(true)
+            } else {
+                self?.isLoading = false
+                self?.errorMessage = "Unknown error occurred"
+                completion(false)
+            }
+        }
+    }
+    
+    func signOut() {
+        do {
+            try Auth.auth().signOut()
+            self.isAuthenticated = false
+            self.currentUser = nil
+        } catch {
+            self.errorMessage = "Failed to sign out: \(error.localizedDescription)"
+        }
+    }
+    
+    func updateEmailPreferences(enabled: Bool, frequency: UserProfile.EmailFrequency, completion: @escaping (Bool) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(false)
+            return
+        }
+        
+        self.isLoading = true
+        
+        db.collection("users").document(userId).updateData([
+            "emailNotificationsEnabled": enabled,
+            "emailFrequency": frequency.rawValue
+        ]) { [weak self] error in
+            self?.isLoading = false
+            
+            if let error = error {
+                self?.errorMessage = "Failed to update preferences: \(error.localizedDescription)"
+                completion(false)
+                return
+            }
+            
+            if let currentUser = self?.currentUser {
+                var updatedUser = currentUser
+                updatedUser.emailNotificationsEnabled = enabled
+                updatedUser.emailFrequency = frequency
+                self?.currentUser = updatedUser
+            }
+            
+            completion(true)
+        }
+    }
+}
+
 // User Profile Model
 struct UserProfile: Codable {
     var userId: String
