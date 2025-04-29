@@ -285,7 +285,7 @@ class SessionHistoryManager: ObservableObject {
         }
         self.sessions = sessions
     }
-    
+
     // Add a new session both locally and to cloud if user is logged in
     func addSession(_ session: PomodoroSession, to sessions: inout [PomodoroSession], userId: String? = nil) {
         var sessionToAdd = session
@@ -324,6 +324,106 @@ class SessionHistoryManager: ObservableObject {
                     .delete()
             }
         }
+    }
+
+    // Generate email content for user's session summary
+    func generateEmailContent(for sessions: [PomodoroSession], period: String) -> String {
+        let workSessions = sessions.filter { $0.type == "Work" }
+        let totalWorkMinutes = workSessions.reduce(0) { $0 + $1.duration }
+        let totalWorkSessions = workSessions.count
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        
+        var emailContent = """
+        <html>
+        <body>
+        <h1>Your Pomo-Pulse \(period) Summary</h1>
+        <p>Here's how you've been doing with your Pomodoro sessions:</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <h2>Summary</h2>
+            <p>Total focus sessions: <strong>\(totalWorkSessions)</strong></p>
+            <p>Total focus time: <strong>\(totalWorkMinutes) minutes</strong></p>
+            <p>That's approximately <strong>\(totalWorkMinutes / 60) hours and \(totalWorkMinutes % 60) minutes</strong> of focused work!</p>
+        </div>
+        
+        <h2>Recent Sessions</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr style="background-color: #4CAF50; color: white;">
+                <th style="padding: 8px; text-align: left;">Date</th>
+                <th style="padding: 8px; text-align: left;">Type</th>
+                <th style="padding: 8px; text-align: left;">Duration</th>
+            </tr>
+        """
+        
+        // Add up to 10 most recent work sessions
+        let recentSessions = workSessions.sorted { $0.date > $1.date }.prefix(10)
+        for (index, session) in recentSessions.enumerated() {
+            let backgroundColor = index % 2 == 0 ? "#f2f2f2" : "white"
+            emailContent += """
+            <tr style="background-color: \(backgroundColor);">
+                <td style="padding: 8px;">\(session.formattedDate)</td>
+                <td style="padding: 8px;">\(session.type)</td>
+                <td style="padding: 8px;">\(session.duration) minutes</td>
+            </tr>
+            """
+        }
+        
+        emailContent += """
+        </table>
+        
+        <div style="margin-top: 20px; padding: 10px; background-color: #e8f5e9; border-radius: 5px;">
+            <p>Keep up the good work! Regular focused sessions lead to better productivity and results.</p>
+            <p>This email was sent from the Pomo-Pulse app. You can change your email preferences in the app settings.</p>
+        </div>
+        </body>
+        </html>
+        """
+        
+        return emailContent
+    }
+    
+    // Trigger email sending
+    func sendEmailUpdate(for user: UserProfile, sessions: [PomodoroSession]) {
+        // In a real app, you would call a cloud function or backend API here
+        // For this demo, we'll simulate the email sending with a cloud function trigger
+        
+        let now = Date()
+        let calendar = Calendar.current
+        
+        // Filter sessions based on frequency
+        var periodSessions: [PomodoroSession] = []
+        var period = ""
+        
+        switch user.emailFrequency {
+        case .daily:
+            let startOfDay = calendar.startOfDay(for: now)
+            periodSessions = sessions.filter { $0.date >= startOfDay }
+            period = "Daily"
+        case .weekly:
+            let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
+            periodSessions = sessions.filter { $0.date >= startOfWeek }
+            period = "Weekly"
+        case .monthly:
+            let components = calendar.dateComponents([.year, .month], from: now)
+            let startOfMonth = calendar.date(from: components)!
+            periodSessions = sessions.filter { $0.date >= startOfMonth }
+            period = "Monthly"
+        }
+        
+        // Generate email content
+        let emailContent = generateEmailContent(for: periodSessions, period: period)
+        
+        // In a real app, this would trigger a cloud function or backend API call
+        // For demonstration, we'll simulate sending by updating the lastEmailSent date
+        let userId = user.userId
+        db.collection("users").document(userId).updateData([
+            "lastEmailSent": Timestamp(date: now)
+        ])
+        
+        // Print the email content for demo purposes
+        print("Email would be sent to \(user.email) with content: \(emailContent)")
     }
 }
 
