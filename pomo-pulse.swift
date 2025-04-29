@@ -202,6 +202,91 @@ struct UserProfile: Codable {
     }
 }
 
+// Session History Manager with Cloud Sync
+class SessionHistoryManager: ObservableObject {
+    private let localHistoryKey = "pomodoroSessionHistory"
+    private var db = Firestore.firestore()
+    @Published var sessions: [PomodoroSession] = []
+    
+    // Load sessions from both local storage and cloud
+    func loadSessions(for userId: String? = nil) -> [PomodoroSession] {
+        var localSessions: [PomodoroSession] = []
+        
+        // Load from local storage first
+        if let data = UserDefaults.standard.data(forKey: localHistoryKey),
+           let decoded = try? JSONDecoder().decode([PomodoroSession].self, from: data) {
+            localSessions = decoded
+        }
+        
+        // If user is logged in, sync with cloud
+        if let userId = userId {
+            syncSessionsWithCloud(localSessions: localSessions, userId: userId)
+        }
+        
+        return localSessions
+    }
+
+    // Sync local sessions with cloud
+    func syncSessionsWithCloud(localSessions: [PomodoroSession], userId: String) {
+        // Get cloud sessions
+        db.collection("users").document(userId).collection("sessions").getDocuments { [weak self] snapshot, error in
+            if let error = error {
+                print("Error getting cloud sessions: \(error)")
+                return
+            }
+            
+            guard let snapshot = snapshot else { return }
+            
+            // Convert cloud documents to sessions
+            var cloudSessions: [PomodoroSession] = []
+            for document in snapshot.documents {
+                if let session = try? document.data(as: PomodoroSession.self) {
+                    cloudSessions.append(session)
+                }
+            }
+            
+            // Merge local and cloud sessions
+            var mergedSessions = localSessions
+            
+            // Add cloud sessions that don't exist locally
+            for cloudSession in cloudSessions {
+                if !localSessions.contains(where: { $0.id == cloudSession.id }) {
+                    mergedSessions.append(cloudSession)
+                }
+            }
+            
+            // Update local storage with merged sessions
+            self?.sessions = mergedSessions
+            self?.saveSessions(mergedSessions)
+            
+            // Upload local sessions that don't exist in cloud
+            for localSession in localSessions {
+                if !cloudSessions.contains(where: { $0.id == localSession.id }) {
+                    var sessionWithUserId = localSession
+                    sessionWithUserId.userId = userId
+                    
+                    do {
+                        try self?.db.collection("users").document(userId)
+                            .collection("sessions")
+                            .document(localSession.id.uuidString)
+                            .setData(from: sessionWithUserId)
+                    } catch {
+                        print("Error uploading session: \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    // Save sessions locally
+    func saveSessions(_ sessions: [PomodoroSession]) {
+        if let encoded = try? JSONEncoder().encode(sessions) {
+            UserDefaults.standard.set(encoded, forKey: localHistoryKey)
+        }
+        self.sessions = sessions
+    }
+}
+
 struct ContentView: View {
     // MARK: - State Properties
     // Timer state variables to track current timer status
