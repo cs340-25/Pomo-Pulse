@@ -111,7 +111,8 @@ The components interact through a centralized state management system, ensuring 
 
 <!-- Note: For GitHub markdown, you would need to add actual screenshot images to your repository -->
 
-<!-- Example: ![Pomo-Pulse Timer Screen](screenshots/pomodoro-timer-screen.png) -->
+<img width="371" alt="Screenshot 2025-04-29 at 8 15 46 AM" src="https://github.com/user-attachments/assets/687a39a9-39ee-4af0-99cb-702461ca1607" />
+<img width="374" alt="Screenshot 2025-04-29 at 8 16 06 AM" src="https://github.com/user-attachments/assets/b45e1bfc-7720-4450-9dc4-1f2f3f06f46a" />
 
 <!-- Since we don't have actual screenshots, this is a placeholder comment -->
 
