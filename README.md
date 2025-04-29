@@ -1,62 +1,99 @@
-# Pomo-Pulse
+# 🕒 Pomo-Pulse
 
-Pomo-Pulse is a SwiftUI-based Pomodoro timer application designed to help users improve productivity through structured work and break intervals.
+**Pomo-Pulse** is a powerful SwiftUI-based Pomodoro timer designed to enhance productivity through focused work intervals, customizable settings, cloud-synced history, and real-time email summaries.
 
-<img width="371" alt="Screenshot 2025-04-29 at 8 15 46 AM" src="https://github.com/user-attachments/assets/9e58f0cb-7d73-4ddd-8947-d96a7feed267" />
-<img width="374" alt="Screenshot 2025-04-29 at 8 16 06 AM" src="https://github.com/user-attachments/assets/64571150-eae3-4d26-bb08-fdda2d1e17d3" />
+<p float="left">
+  <img src="https://github.com/user-attachments/assets/9e58f0cb-7d73-4ddd-8947-d96a7feed267" width="300" />
+  <img src="https://github.com/user-attachments/assets/64571150-eae3-4d26-bb08-fdda2d1e17d3" width="300" />
+</p>
 
+---
 
-## Features
+## 🚀 Features
 
-- **Pomodoro Technique Implementation**: Alternates between focused work sessions and breaks
-- **Visual Timer**: Circular progress indicator shows remaining time at a glance
-- **Multiple Break Types**: Short breaks after each work session with longer breaks after completing a set
-- **Customizable Settings**:
-  - Work duration (1-60 minutes)
-  - Short break duration (1-30 minutes)
-  - Long break duration (5-60 minutes)
-  - Number of pomodoros until a long break (1-10)
-- **Progress Tracking**: Visual indicators show completed pomodoros in the current set
-- **Audio Notification**: Sound alert when a timer completes
-- **Persistent Settings**: User preferences are saved between app sessions
+- ⏱️ **Pomodoro Timer**: Alternate between focus and break phases
+- 🔄 **Phase Cycling**: Short breaks after each work session; long breaks after multiple sessions
+- 🎯 **Progress Indicators**: Visual display of completed Pomodoros
+- 🔔 **Audio Alerts**: Bell sound when timer ends (via AVFoundation)
+- ⚙️ **Settings Panel**:
+  - Work duration: 1–60 minutes
+  - Short break: 1–30 minutes
+  - Long break: 5–60 minutes
+  - Pomodoros until long break: 1–10
+- 📊 **Session History**:
+  - Stored locally and synced to Firebase Firestore (if logged in)
+  - Filter by Work / Breaks / All
+  - Summary stats and deletion support
+- 👤 **Authentication**:
+  - Email/password login and signup via FirebaseAuth
+  - Email preferences stored in Firestore
+- 📧 **Email Reports**:
+  - Weekly, daily, or monthly session summaries
+  - Automatically triggered based on frequency setting
 
-## How It Works
+---
 
-1. Start a work session (default 25 minutes)
-2. When the timer completes, a short break begins (default 5 minutes)
-3. After completing the specified number of work sessions, a long break is triggered (default 15 minutes)
-4. The cycle repeats to help maintain focus and prevent burnout
+## 🛠️ How It Works
 
-## Controls
+1. Start a **Work** session (default: 25 minutes)
+2. After the timer ends, a **Short Break** starts (default: 5 minutes)
+3. After `n` work sessions, a **Long Break** (default: 15 minutes) begins
+4. This loop continues until manually reset or paused
 
-- **Play/Pause**: Start or pause the current timer
-- **Reset**: Reset the current timer to its original duration
-- **Skip**: Immediately end the current phase and move to the next one
-- **Settings**: Customize timer durations and sequence preferences
+---
 
-## Technical Details
+## 🧭 Controls
 
-- Built with SwiftUI for iOS
-- Uses AVFoundation for sound alerts
-- Implements @AppStorage for persistent settings
-- Responsive circular progress indicator with animations
+| Control       | Action                        |
+|---------------|-------------------------------|
+| ▶️ Play/Pause | Start or pause the timer      |
+| 🔁 Reset      | Reset to current mode duration |
+| ⏭️ Skip       | Move to the next phase         |
+| ⚙️ Settings   | Adjust timer preferences       |
+| 📜 History    | View past sessions             |
+| 👤 Profile    | Manage account & email reports |
 
-## Requirements
+---
 
-- iOS 14.0 or later
-- Compatible with iPhone and iPad
+## 🔧 Technical Details
 
-## Installation
+- **Language**: Swift (SwiftUI)
+- **Dependencies**:
+  - `FirebaseAuth`, `FirebaseFirestore`
+  - `AVFoundation` for sound
+- **Storage**:
+  - `@AppStorage` for settings
+  - `UserDefaults` + Firestore for session history
+- **UI**: Animated circular progress, dark/light themes, segmented filters
 
-1. Clone the repository
-2. Open the project in Xcode
-3. Build and run on your device or simulator
-4. Add app icon photo under Pomo-pulse->Assets->App icon (Optional)
+---
 
-## Future Enhancements
+## 📱 Requirements
 
-- Task tracking and history
-- Themes and appearance customization
-- Extended statistics and productivity insights
-- Additional sound options
-- Focus mode integration
+- iOS 14.0+
+- iPhone or iPad
+
+---
+
+## 📦 Installation
+
+```bash
+git clone https://github.com/your-username/pomo-pulse.git
+cd pomo-pulse
+open PomoPulse.xcodeproj
+```
+
+> Optionally add an app icon under `Assets > AppIcon`
+
+---
+
+## 🧪 Future Enhancements
+
+- ✅ Task tracking & to-dos
+- 📈 Visual productivity stats
+- 🎨 Theme customization
+- 🔕 Local notifications in background
+- 🔊 Custom alert sounds
+- 🧘 Focus mode integration
+
+---
